@@ -1,0 +1,482 @@
+================================================================================
+                           CHAPTER 4
+                       ANALYSIS MODELING
+          SMART CROP PREDICTION SYSTEM - MAJOR PROJECT
+================================================================================
+
+4.1 DATA MODELING
+================================================================================
+
+ENTITY-RELATIONSHIP DIAGRAM
+
+┌─────────────────────┐         ┌─────────────────────┐
+│   CROP_DATA         │         │   WEATHER_DATA      │
+├─────────────────────┤         ├─────────────────────┤
+│ • state             │         │ • date              │
+│ • district          │         │ • location          │
+│ • season            │         │ • temp_max          │
+│ • crop              │         │ • temp_min          │
+│ • crop_year         │         │ • precipitation     │
+│ • area (hectares)   │◄────┐   │ • soil_temp_0cm     │
+│ • production (tons) │     │   │ • soil_temp_6cm     │
+│ • yield (t/ha)      │     └───│ • soil_moisture     │
+└─────────────────────┘         └─────────────────────┘
+         │                               │
+         │                               │
+         └───────────┬───────────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │  SYNTHETIC_DATA     │
+         ├─────────────────────┤
+         │ • All crop features │
+         │ • All weather feat. │
+         │ • is_synthetic (T/F)│
+         │ • yield_category    │
+         │   (Low/Med/High)    │
+         └─────────────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │   ML_MODEL          │
+         ├─────────────────────┤
+         │ • model_type: RF    │
+         │ • n_estimators: 120 │
+         │ • max_depth: 10     │
+         │ • accuracy_score    │
+         │ • predictions       │
+         └─────────────────────┘
+
+DATA SCHEMA
+
+Table 1: merged_crop_data.csv
+Field           | Type    | Example         | Description
+----------------|---------|-----------------|---------------------------
+State_Name      | String  | Uttar Pradesh   | State location
+District_Name   | String  | Lucknow         | District location
+Season          | String  | Kharif          | Growing season
+Crop            | String  | Bajra           | Crop type
+Crop_Year       | Integer | 2020            | Year of cultivation
+Area            | Float   | 1250.5          | Area in hectares
+Production      | Float   | 2875.3          | Production in tons
+Yield           | Float   | 2.30            | Yield (tons/hectare)
+
+Table 2: historical_weather_90days.csv
+Field                | Type  | Example  | Unit
+---------------------|-------|----------|------------------
+date                 | Date  | 2025-10-15| YYYY-MM-DD
+temperature_2m_max   | Float | 32.5     | Celsius
+temperature_2m_min   | Float | 18.2     | Celsius
+precipitation_sum    | Float | 12.5     | mm
+soil_temperature_0cm | Float | 28.3     | Celsius
+soil_moisture_0_to_7cm| Float| 0.35     | m³/m³
+
+Table 3: synthetic_bajra_complete.csv (Generated)
+Records: 5,860 synthetic samples
+Features: 11 (crop features + weather features)
+Target: yield_category (Low=0, Medium=1, High=2)
+Split: Train (70%), Validation (15%), Test (15%)
+
+
+4.2 ACTIVITY DIAGRAMS / CLASS DIAGRAM
+================================================================================
+
+SYSTEM ACTIVITY DIAGRAM - COMPLETE WORKFLOW
+
+    [START]
+       │
+       ▼
+┌──────────────────┐
+│ Load Raw Dataset │
+│ (238,838 rows)   │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Filter Data      │
+│ Crop: Bajra      │◄─── User Selection
+│ State: UP        │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ API Call         │
+│ Weather Data     │
+│ (90 days)        │
+└────────┬─────────┘
+         │
+         ▼
+    ┌───────┐
+    │ Merge │
+    └───┬───┘
+        │
+        ▼
+┌──────────────────┐      NO
+│ Data Size OK?    ├─────────┐
+│ (>5000 samples)  │         │
+└────────┬─────────┘         │
+         │ YES               │
+         │                   ▼
+         │         ┌──────────────────┐
+         │         │ Apply SMOTE      │
+         │         │ Generate 5x Data │
+         │         └────────┬─────────┘
+         │                  │
+         └──────────────────┘
+                   │
+                   ▼
+         ┌──────────────────┐
+         │ Train/Val/Test   │
+         │ Split (70/15/15) │
+         └────────┬─────────┘
+                  │
+                  ▼
+         ┌──────────────────┐
+         │ Train RF Model   │
+         │ (120 trees)      │
+         └────────┬─────────┘
+                  │
+                  ▼
+         ┌──────────────────┐
+         │ Evaluate Model   │
+         │ Accuracy > 70%?  │
+         └────────┬─────────┘
+                  │
+            ┌─────┴─────┐
+            │ YES       │ NO
+            ▼           ▼
+    ┌─────────────┐  ┌──────────────┐
+    │ Save Model  │  │ Tune Params  │
+    │ (.pkl)      │  │ Retry        │
+    └──────┬──────┘  └──────────────┘
+           │
+           ▼
+    ┌─────────────┐
+    │ Predict     │
+    │ New Samples │
+    └──────┬──────┘
+           │
+           ▼
+      [END]
+
+
+CLASS DIAGRAM - SYSTEM COMPONENTS
+
+┌────────────────────────────────────────┐
+│         DataLoader                     │
+├────────────────────────────────────────┤
+│ - file_path: str                       │
+│ - dataframe: pd.DataFrame              │
+├────────────────────────────────────────┤
+│ + load_csv(): DataFrame                │
+│ + filter_data(crop, state): DataFrame  │
+│ + get_statistics(): dict               │
+└────────────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌────────────────────────────────────────┐
+│         WeatherAPIClient               │
+├────────────────────────────────────────┤
+│ - api_url: str                         │
+│ - latitude: float                      │
+│ - longitude: float                     │
+├────────────────────────────────────────┤
+│ + fetch_weather(days): DataFrame       │
+│ + parse_response(json): DataFrame      │
+│ + save_to_csv(path): bool              │
+└────────────────────────────────────────┘
+                 │
+                 │ provides data to
+                 ▼
+┌────────────────────────────────────────┐
+│      DataPreprocessor                  │
+├────────────────────────────────────────┤
+│ - encoder: LabelEncoder                │
+│ - scaler: StandardScaler               │
+├────────────────────────────────────────┤
+│ + encode_labels(df): DataFrame         │
+│ + scale_features(df): DataFrame        │
+│ + handle_missing(): DataFrame          │
+└────────────────────────────────────────┘
+                 │
+                 │ feeds
+                 ▼
+┌────────────────────────────────────────┐
+│      SMOTEGenerator                    │
+├────────────────────────────────────────┤
+│ - k_neighbors: int = 5                 │
+│ - sampling_strategy: str = 'auto'      │
+├────────────────────────────────────────┤
+│ + generate_synthetic(X, y): (X, y)     │
+│ + validate_quality(): bool             │
+│ + export_csv(path): bool               │
+└────────────────────────────────────────┘
+                 │
+                 │ augments
+                 ▼
+┌────────────────────────────────────────┐
+│      RandomForestModel                 │
+├────────────────────────────────────────┤
+│ - n_estimators: int = 120              │
+│ - max_depth: int = 10                  │
+│ - model: RandomForestClassifier        │
+├────────────────────────────────────────┤
+│ + train(X_train, y_train): None        │
+│ + predict(X_test): array               │
+│ + evaluate(): dict                     │
+│ + get_feature_importance(): array      │
+│ + save_model(path): bool               │
+└────────────────────────────────────────┘
+                 │
+                 │ uses
+                 ▼
+┌────────────────────────────────────────┐
+│      Evaluator                         │
+├────────────────────────────────────────┤
+│ - y_true: array                        │
+│ - y_pred: array                        │
+├────────────────────────────────────────┤
+│ + accuracy_score(): float              │
+│ + classification_report(): dict        │
+│ + confusion_matrix(): array            │
+│ + plot_metrics(): None                 │
+└────────────────────────────────────────┘
+
+
+4.3 FUNCTIONAL MODELING
+================================================================================
+
+USE CASE DIAGRAM
+
+                    SMART CROP PREDICTION SYSTEM
+                    
+        ┌─────────────────────────────────────────────┐
+        │                                             │
+        │    ┌────────────────────────────────┐      │
+        │    │  Load Crop Dataset             │      │
+   ┌────┼───►│  (merged_crop_data.csv)        │      │
+   │    │    └────────────────────────────────┘      │
+   │    │                                             │
+   │    │    ┌────────────────────────────────┐      │
+   │    ├───►│  Filter by Crop & Location     │      │
+   │    │    │  (Bajra, Uttar Pradesh)        │      │
+   │    │    └────────────────────────────────┘      │
+ ┌─┴──┐ │                                             │
+ │Data│ │    ┌────────────────────────────────┐      │
+ │Sci-│ ├───►│  Fetch Weather Data (API)      │◄─────┼─── Open-Meteo
+ │en- │ │    │  (90-day historical)           │      │    API
+ │tist│ │    └────────────────────────────────┘      │
+ └─┬──┘ │                                             │
+   │    │    ┌────────────────────────────────┐      │
+   │    ├───►│  Generate Synthetic Data       │      │
+   │    │    │  (SMOTE - 5x augmentation)     │      │
+   │    │    └────────────────────────────────┘      │
+   │    │                                             │
+   │    │    ┌────────────────────────────────┐      │
+   │    ├───►│  Train ML Model                │      │
+   │    │    │  (Random Forest)               │      │
+   │    │    └────────────────────────────────┘      │
+   │    │                                             │
+   │    │    ┌────────────────────────────────┐      │
+   │    ├───►│  Evaluate Performance          │      │
+   │    │    │  (Accuracy, F1-Score)          │      │
+   │    │    └────────────────────────────────┘      │
+   │    │                                             │
+   │    │    ┌────────────────────────────────┐      │
+   └────┼───►│  Predict Crop Yield            │      │
+        │    │  (Low/Medium/High)             │      │
+        │    └────────────────────────────────┘      │
+        │                                             │
+        └─────────────────────────────────────────────┘
+
+FUNCTIONAL MODULES
+
+Module 1: Data Management
+├── Function: load_dataset()
+│   Input: CSV file path
+│   Output: Pandas DataFrame
+│   Processing: Read, validate structure
+│
+├── Function: filter_data(crop, state)
+│   Input: Crop name, State name
+│   Output: Filtered DataFrame
+│   Processing: Boolean indexing
+│
+└── Function: merge_weather(crop_df, weather_df)
+    Input: Two DataFrames
+    Output: Combined DataFrame
+    Processing: Join on date/location
+
+Module 2: Weather Integration
+├── Function: fetch_weather_api(lat, lon, days)
+│   Input: Coordinates, duration
+│   Output: Weather DataFrame
+│   API: Open-Meteo Archive
+│   Parameters: temp, rainfall, soil
+│
+└── Function: parse_weather_json(response)
+    Input: JSON response
+    Output: Structured DataFrame
+    Processing: Extract daily values
+
+Module 3: Synthetic Data Generation
+├── Function: apply_smote(X, y)
+│   Input: Features, Labels
+│   Output: Augmented X, y
+│   Algorithm: k-NN interpolation (k=5)
+│   Result: 5x data multiplication
+│
+└── Function: validate_synthetic(df)
+    Input: Synthetic DataFrame
+    Output: Quality metrics
+    Checks: NaN count, distribution, outliers
+
+Module 4: Machine Learning
+├── Function: train_model(X_train, y_train)
+│   Input: Training data
+│   Output: Trained RF model
+│   Parameters: n_estimators=120, max_depth=10
+│
+├── Function: predict_yield(model, X_test)
+│   Input: Model, Test features
+│   Output: Predictions (0/1/2)
+│   Classes: Low/Medium/High
+│
+└── Function: evaluate_model(y_true, y_pred)
+    Input: Actual, Predicted
+    Output: Accuracy, Precision, Recall, F1
+    Visualization: Confusion matrix
+
+Module 5: Reporting
+└── Function: generate_report(results)
+    Input: Model metrics
+    Output: Classification report
+    Format: Precision/Recall/F1 per class
+
+
+4.4 TIMELINE CHART (PROJECT SCHEDULE)
+================================================================================
+
+GANTT CHART - PROJECT PHASES
+
+Phase                    │ Month 1  │ Month 2  │ Month 3  │ Month 4
+─────────────────────────┼──────────┼──────────┼──────────┼──────────
+1. Planning & Research   │ ████████ │          │          │
+   - Literature review   │ ████     │          │          │
+   - Dataset search      │     ████ │          │          │
+                         │          │          │          │
+2. Data Collection       │          │ ████████ │          │
+   - Acquire crop data   │          │ ████     │          │
+   - Weather API setup   │          │     ████ │          │
+                         │          │          │          │
+3. EDA & Preprocessing   │          │          │ ████████ │
+   - Statistical analysis│          │          │ ████     │
+   - Data cleaning       │          │          │     ████ │
+                         │          │          │          │
+4. SMOTE Implementation  │          │          │ ████████ │ ████
+   - Algorithm coding    │          │          │ ████     │
+   - Data generation     │          │          │     ████ │
+   - Validation          │          │          │          │ ████
+                         │          │          │          │
+5. Model Development     │          │          │          │ ████████
+   - RF training         │          │          │          │ ████
+   - Hyperparameter tune │          │          │          │     ████
+                         │          │          │          │
+6. Testing & Validation  │          │          │          │ ████████
+   - Performance eval    │          │          │          │ ████
+   - Cross-validation    │          │          │          │     ████
+                         │          │          │          │
+7. Documentation         │ ████     │ ████     │ ████     │ ████████
+   - Code comments       │ ██       │ ██       │ ██       │
+   - Final report        │          │          │          │ ████████
+
+Legend: ████ = Active work period
+
+
+DETAILED TASK BREAKDOWN WITH MILESTONES
+
+WEEK 1-4: Planning & Research
+├── Week 1: Problem identification & objective setting
+├── Week 2: Literature review (9 research papers)
+├── Week 3: Dataset acquisition (merged_crop_data.csv)
+└── Week 4: Technology stack finalization
+    ✓ Milestone 1: Project proposal complete
+
+WEEK 5-8: Data Collection & Integration
+├── Week 5: Exploratory Data Analysis (54 cells)
+├── Week 6: Weather API integration (Open-Meteo)
+├── Week 7: Data filtering (Bajra, UP - 1,172 records)
+└── Week 8: Feature engineering & encoding
+    ✓ Milestone 2: Clean dataset ready
+
+WEEK 9-12: Synthetic Data Generation
+├── Week 9: SMOTE algorithm implementation
+├── Week 10: Generate 5,860 synthetic samples
+├── Week 11: Quality validation (NaN check, distributions)
+└── Week 12: Train/val/test split (70/15/15)
+    ✓ Milestone 3: Augmented dataset (5,860 samples)
+
+WEEK 13-16: Model Development & Evaluation
+├── Week 13: Random Forest training (n_estimators=120)
+├── Week 14: Model evaluation (accuracy, F1-score)
+├── Week 15: Feature importance analysis
+└── Week 16: Model optimization & final testing
+    ✓ Milestone 4: Trained ML model (target: 70-85% accuracy)
+
+WEEK 16-17: Documentation & Submission
+├── Week 16: Complete 35-page technical report
+└── Week 17: Final review, formatting, submission
+    ✓ Milestone 5: Project submission complete
+
+
+RESOURCE ALLOCATION
+
+Resource            │ Allocation      │ Duration
+────────────────────┼─────────────────┼──────────
+Data Scientist      │ 1 person        │ 17 weeks
+Computing (Laptop)  │ Intel i5, 8GB   │ Full project
+Weather API         │ Free tier       │ Weeks 5-8
+Python Libraries    │ Open-source     │ Full project
+Documentation       │ Jupyter + Word  │ Weeks 1-17
+
+
+CRITICAL PATH
+
+Planning → Data Collection → SMOTE Generation → Model Training → Evaluation
+  (4 wks)      (4 wks)           (4 wks)           (4 wks)        (1 wk)
+
+Total Duration: 17 weeks
+Critical Dependencies:
+  - SMOTE depends on clean data
+  - Model training depends on synthetic data
+  - Evaluation depends on trained model
+
+
+KEY DELIVERABLES TIMELINE
+
+Deliverable                          │ Due Date      │ Status
+─────────────────────────────────────┼───────────────┼─────────
+Project Proposal                     │ Week 4        │ ✓ Done
+Exploratory Data Analysis (Notebook) │ Week 8        │ ✓ Done
+SMOTE Data Generator (Notebook)      │ Week 12       │ ✓ Done
+ML Model Training (Notebook)         │ Week 16       │ ✓ Done
+Technical Report (35 pages)          │ Week 17       │ ✓ Done
+Final Presentation                   │ Week 17       │ Pending
+
+================================================================================
+                    END OF CHAPTER 4 - ANALYSIS MODELING
+================================================================================
+
+Note: Copy this content to Microsoft Word and:
+1. Format headings as Heading 1, 2, 3
+2. Convert ASCII diagrams to SmartArt (Insert → SmartArt)
+3. Use Tables for data schemas
+4. Insert Gantt chart as Excel embedded object for better visualization
+5. Add page numbers and table of contents
+
+Word Conversion Tips:
+- Use Courier New font for diagrams to preserve alignment
+- Insert → Shapes for flowcharts (better quality)
+- Insert → Chart → Gantt for timeline
+- Use Table Design for professional styling

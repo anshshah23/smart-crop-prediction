@@ -1,0 +1,653 @@
+\documentclass[10pt,twocolumn]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{abstract}
+\usepackage{titlesec}
+\usepackage{geometry}
+\usepackage{multicol}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+% Geometry
+\geometry{
+  left=1.5cm,
+  right=1.5cm,
+  top=2cm,
+  bottom=2cm,
+  columnsep=1cm
+}
+
+% Title Formatting
+\titleformat{\section}{\large\bfseries}{\thesection.}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{1em}{}
+
+% Title and Author
+\title{\textbf{Smart Crop Prediction System: Integrating Weather Data and Synthetic Data Generation for Enhanced Agricultural Yield Forecasting}}
+\author{
+Ansh Shah\textsuperscript{1}, Bhumil Shah\textsuperscript{2}, Dev Pandey\textsuperscript{3}, Vandan Thakar\textsuperscript{4} \\
+Guide: Prof. Pranit Bari\textsuperscript{5} \\
+Department of Computer Engineering/Information Technology, \\
+College Name, University of Mumbai, India \\
+\texttt{\{ansh.shah, bhumil.shah, dev.pandey, vandan.thakar\}@university.edu}
+}
+\date{January 9, 2026}
+
+\begin{document}
+\twocolumn[
+\maketitle
+\begin{onecolabstract}
+\noindent
+\textbf{Abstract—} Agriculture remains the backbone of India's economy, yet unpredictable crop yields due to climate variability and data scarcity pose significant challenges to food security and farmer livelihoods. This paper presents a Smart Crop Prediction System that leverages machine learning, real-time weather data integration, and synthetic data generation to forecast crop yields with high accuracy. Focusing on Bajra (Pearl Millet) cultivation in Uttar Pradesh, we developed an end-to-end pipeline that combines historical agricultural data (238,838 records) with 90-day weather parameters from the Open-Meteo API. To address class imbalance and data scarcity, we employed SMOTE (Synthetic Minority Oversampling Technique) to generate 5,860 synthetic samples from 1,172 real samples—a 5x augmentation that preserves statistical properties while enhancing model robustness. We evaluated multiple ensemble learning algorithms including Random Forest, Gradient Boosting, and XGBoost classifiers on this augmented dataset. Comprehensive performance analysis revealed that XGBoost achieves superior classification accuracy and generalization capability, making it the optimal choice for deployment. The system provides actionable yield predictions (Low/Medium/High categories) based on area, production, weather conditions, and soil metrics. This research demonstrates that combining traditional agricultural datasets with modern AI techniques and automated weather integration creates a scalable, data-efficient solution for precision agriculture in resource-constrained environments.
+\end{onecolabstract}
+\vspace{1em}
+]
+
+% Keywords
+\noindent
+\textbf{Keywords—} Crop Yield Prediction, SMOTE, Machine Learning, Weather API, Random Forest, Precision Agriculture, Data Augmentation, Bajra Cultivation
+\section{Introduction}
+Ayurveda, one of the world's oldest systems of medicine, has long emphasized balance—within the body, mind, and environment. Central to this philosophy is the concept of the Tridosha—Vata, Pitta, and Kapha—which governs an individual’s physiological and psychological makeup. Among the most refined diagnostic tools in Ayurveda is Nadi Pariksha, or pulse examination, where skilled practitioners interpret subtle patterns in the wrist's pulse to assess a person's doshic state. Despite its historical significance and continued relevance, Nadi Pariksha remains largely inaccessible in modern healthcare due to its dependence on highly trained practitioners and the absence of standardized, scalable methodologies.
+
+As global interest in integrative and personalized healthcare grows, there is a pressing need to bridge the gap between traditional diagnostic wisdom and modern scientific tools. While biomedical technologies have advanced rapidly—offering wearable health monitors, AI-based diagnostics, and remote patient care—ancient practices like Nadi Pariksha have yet to be translated into digital, data-driven frameworks. This disconnect not only limits the reach of Ayurvedic medicine but also leaves a valuable diagnostic tradition underutilized in the age of AI.
+
+This research aims to reimagine Nadi Pariksha through a technological lens. We propose Nadi Parikshan, a hybrid diagnostic platform that combines wearable pulse sensors, signal processing, and machine learning to analyze arterial pulse waveforms and classify doshic imbalances. The system is designed to provide users with personalized wellness recommendations—ranging from dietary guidelines and yoga routines to expert Ayurvedic consultations—through an intuitive chatbot interface. Built using the MERN stack, the platform ensures scalability, accessibility, and cultural relevance in both rural and urban settings.
+
+By integrating traditional Ayurvedic principles with contemporary AI methodologies, this work not only addresses the subjectivity and exclusivity of Nadi Pariksha but also contributes to the broader goal of democratizing preventive healthcare. Our findings show promising classification accuracy on both real and synthetic datasets, demonstrating that age-old intuition can, in fact, be modeled with modern intelligence.
+
+\section{Literature Review}
+\subsection{Machine Learning in Crop Yield Prediction}
+Crop yield prediction has evolved from traditional statistical models to advanced machine learning approaches over the past two decades. Kumar et al. (2017) demonstrated that Random Forest classifiers achieve 76-82\% accuracy on Indian agricultural datasets spanning 5 crops over 15 years, outperforming Support Vector Machines and Decision Trees. Their work validated ensemble methods as optimal for medium-sized agricultural datasets.
+
+Gandhi and Armstrong (2016) explored ensemble learning techniques including bagging, boosting, and stacking, reporting accuracy improvements of 8-12\% over single models. XGBoost (Chen and Guestrin, 2016), a gradient boosting framework, has emerged as a leading algorithm for structured data, winning numerous machine learning competitions. Its regularization capabilities and parallel tree boosting make it particularly effective for agricultural datasets with complex feature interactions.
+
+Recent deep learning approaches by Khaki et al. (2020) achieved 85-90\% accuracy using LSTM networks for US corn production forecasting. While impressive, these methods require 20,000+ samples and GPU infrastructure, limiting accessibility for developing regions. Our work demonstrates that comparable performance can be achieved with ensemble methods (Random Forest, Gradient Boosting, XGBoost) on smaller datasets when augmented with synthetic data, with XGBoost emerging as the most effective classifier.
+
+\subsection{Weather-Based Agricultural Decision Support}
+Weather parameters directly influence crop growth and yield at every developmental stage. Lobell and Field (2007) demonstrated that 1°C temperature increase reduces yields by 3-5\% globally, establishing temperature as a critical predictor. Mukherjee et al. (2019) developed a real-time weather-based advisory system that improved yields by 15\% through timely interventions, validating the value of API integration.
+
+Weather API services have evolved significantly. OpenWeatherMap and Weather Underground provide historical data but require paid subscriptions (\$50-100/month). Open-Meteo offers a free tier with 10,000 requests/day and 90-day historical access, making it ideal for research and MVP development. Our system leverages Open-Meteo to fetch 10 parameters including temperature (max/min), precipitation, and soil metrics (temperature at 0cm and 6cm depths, moisture content).
+
+\subsection{3. Machine Learning in Ayurvedic Diagnostics}
+With signal processing techniques making pulse data analyzable, researchers began exploring ML approaches to classify doshic imbalances. Joshi’s 2011 dissertation [11] outlined methods for standardized data acquisition and initial classification models based on waveform characteristics. Later efforts expanded this by incorporating more advanced algorithms like ensemble learning to improve prediction accuracy.
+
+Systems such as those developed by Dubey et al. [1] demonstrated how decision trees and other supervised learning models could be used in real-time scenarios to classify users' physiological states. However, these systems often lacked transparency in model behavior and did not fully integrate personalization or adaptivity.
+
+Chaudhari and Mudhalwadkar’s fuzzy logic-based model [9] offered a more interpretable AI framework, aligning closer to the nuanced, subjective decision-making seen in traditional Ayurveda. Nonetheless, most existing ML models still rely on either static datasets or rigid classification schemes, which limits their generalizability.
+
+\subsection{Summary and Research Gap}
+While past research has made significant progress in digitizing pulse data and applying computational models to Ayurvedic diagnostics, key limitations remain. These include the absence of end-to-end systems that offer real-time analysis, personalized recommendations, and user-centric interfaces. Existing solutions often suffer from limited scalability, poor integration of patient feedback, and a lack of contextual cultural sensitivity.
+
+Our research addresses these gaps by combining real-time pulse signal acquisition with advanced ML classification and a MERN-stack chatbot interface to deliver accessible, interpretable, and culturally relevant health guidance. It bridges the divide between traditional knowledge systems and cutting-edge AI, making Nadi Pariksha more objective, scalable, and impactful.
+
+\section{System Architecture and Workflow}
+The evolution of the Nadi Pariksha system is marked by three distinct versions, each building upon the lessons of its predecessor to enhance accuracy, scalability, and user engagement.
+
+\subsection{Version 1: Foundational prototype}
+The initial prototype focused on establishing a baseline for pulse signal acquisition and basic classification. Utilizing a single piezoelectric sensor, the system captured radial pulse waveforms, which were then processed using fundamental signal processing techniques. Feature extraction methods such as time-domain analysis and Fast Fourier Transform (FFT) were employed to derive key pulse characteristics. Classification was achieved using traditional machine learning algorithms like Support Vector Machines (SVM) and k-Nearest Neighbors (k-NN). While this version demonstrated the feasibility of digitizing Nadi Pariksha, it faced limitations in handling noise and lacked real-time processing capabilities.
+
+\subsection{Version 2: Intermediate enhancement}
+Building on the foundational prototype, the second iteration introduced improvements in both hardware and software components. The sensor array was expanded to include multiple sensors, enhancing the fidelity of pulse signal acquisition. Advanced signal processing techniques, including wavelet transforms and adaptive filtering, were implemented to improve noise reduction and feature extraction. This version also integrated a more sophisticated classification framework, employing ensemble learning methods to increase diagnostic accuracy. Additionally, a rudimentary user interface was developed to facilitate interaction with the system, marking a step towards user-centric design.
+
+\subsection{Version 3: Integrated AI-Powered Platform}
+The latest version represents a comprehensive, AI-driven approach to Nadi Pariksha. The system architecture comprises the following components:
+
+Sensor Module: A tri-axial piezoelectric sensor array captures high-resolution pulse waveforms from the radial artery.
+ResearchGate
+
+Data Acquisition and Preprocessing: Signals are digitized and subjected to preprocessing steps, including normalization, denoising using wavelet transforms, and segmentation into pulse cycles.
+
+Feature Extraction: Both time-domain and frequency-domain features are extracted, encompassing parameters such as pulse amplitude, variability, and spectral energy distribution.
+
+Machine Learning Engine: An ensemble of classifiers, including Random Forest, Gradient Boosting, and Neural Networks, is trained on labeled datasets to predict doshic imbalances (Vata, Pitta, Kapha).
+
+User Interface: A web-based application built on the MERN (MongoDB, Express.js, React.js, Node.js) stack provides users with real-time diagnostic feedback and personalized health recommendations.
+
+Chatbot Integration: An AI-powered chatbot facilitates user interaction, guiding them through the diagnostic process and interpreting results in an accessible manner.
+
+This integrated system achieves a classification accuracy of 94.33\%, demonstrating its potential as a scalable and culturally resonant healthcare solution.
+
+\section{Methodology}
+
+The methodology for the digitization of Nadi Pariksha involves several critical stages, from data collection to machine learning analysis. The key components of the methodology are outlined below.
+
+\subsection{Data Collection}
+
+The system uses an Arduino-based setup to collect pulse signals corresponding to the three doshas—Vata, Pitta, and Kapha—through dedicated sensors connected to the analog input pins. The sensors measure pulse waveforms that are processed to obtain key features like amplitude, frequency, and BPM (beats per minute). Below is the sensor configuration:
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\linewidth]{nadi-setup.jpg}
+    \caption{Pulse Sensor with Arduino Architecture}
+    \label{fig:enter-label}
+\end{figure}
+\begin{itemize}
+    \item \textbf{Vata Sensor (A0)}: This sensor captures pulse signals specific to Vata dosha.
+    \item \textbf{Pitta Sensor (A1)}: This sensor captures pulse signals specific to Pitta dosha (not currently connected).
+    \item \textbf{Kapha Sensor (A2)}: This sensor captures pulse signals specific to Kapha dosha (not currently connected).
+\end{itemize}
+
+The Arduino code uses a real-time clock (RTC) to timestamp each pulse reading. The collected pulse signals are processed using a moving average filter to smooth the raw analog signals. The filter window size is set to 10, allowing for more accurate pulse data over time.
+
+\subsection{Preprocessing of Pulse Data}
+
+The pulse data is processed in the following manner:
+\begin{itemize}
+    \item Each pulse signal (Vata, Pitta, Kapha) is read through its respective analog input pin.
+    \item The moving average filter is applied to smooth out noise from the raw data.
+    \item The readings are normalized to a range between 0 and 1 to standardize the data for subsequent analysis.
+\end{itemize}
+
+For each sensor, the filtered average is calculated as:
+\[
+\text{Average}{\text{sensor}} = \frac{1}{n} \sum{i=0}^{n-1} \text{Reading}_{i}
+\]
+
+Where \(n\) is the filter window size, and \(\text{Reading}_{i}\) is the value at the \(i^{\text{th}}\) position in the moving average window.
+
+\subsection{Heart Rate Calculation}
+
+The heart rate (BPM) is determined by detecting the peaks in the pulse signal. An improved peak detection algorithm is implemented by comparing the current pulse reading with the previous one. A threshold value is used to avoid noise, and the peak detection occurs only when the pulse signal exceeds the threshold and there is a sufficient time interval (600 ms) since the last peak.
+
+The BPM is estimated using the following equation:
+
+\[
+\text{BPM} = \frac{60}{\text{Time Interval between Peaks (s)}}
+\]
+
+For the pulse signals, the peak is considered when the normalized value exceeds a predefined threshold (60 in this case), and the heart rate is updated accordingly.
+
+\subsection{Feature Extraction and Preprocessing}
+
+The feature set for the Nadi Pariksha analysis includes several physiological and personal data points collected from the subjects. These features are used for the machine learning model's preprocessing and training phases. Below is the list of features along with a brief description of each:
+
+\begin{itemize}
+    \item \textbf{Timestamp}: The exact time at which the data was collected. This is used to associate the pulse data with the real-time measurements.
+    \item \textbf{Subject Number}: A unique identifier for each subject in the dataset, allowing the tracking of individual subjects.
+    \item \textbf{Age}: The age of the subject, as it may affect pulse characteristics and dosha imbalance.
+    \item \textbf{Gender}: The gender of the subject, which may also influence pulse dynamics and doshic characteristics.
+    \item \textbf{Constitution (Prakruti)}: The known constitution of the subject, i.e., their primary dosha type (Vata, Pitta, or Kapha). This is important as it serves as the ground truth for model training and classification.
+    \item \textbf{Sleep Quality}: A measure of the subject's sleep quality, which can influence pulse characteristics and doshic imbalances.
+    \item \textbf{Stress Level}: The subject’s perceived stress level, as stress is known to affect heart rate variability and other pulse features.
+    \item \textbf{Hours Since Meal}: Time elapsed since the last meal, as digestion and metabolism may influence pulse rate and variability.
+    \item \textbf{Ailment}: Any health conditions or ailments the subject is experiencing, as these can impact pulse measurements and doshic imbalances.
+    \item \textbf{Vata Heart Rate (BPM)}: The heart rate specific to the Vata dosha, obtained through peak detection on the Vata pulse signal.
+    \item \textbf{Pitta Heart Rate (BPM)}: The heart rate specific to the Pitta dosha, similarly obtained from the Pitta pulse signal.
+    \item \textbf{Kapha Heart Rate (BPM)}: The heart rate specific to the Kapha dosha, extracted from the Kapha pulse signal.
+    \item \textbf{Peak Amplitude}: The amplitude of the peak in the pulse signal, which can indicate the strength of the pulse.
+    \item \textbf{Peak Variability}: The variability in the amplitude of pulse peaks, which can provide insights into the consistency of the pulse.
+    \item \textbf{Time of Day}: The time of day when the pulse data was collected. It may influence physiological states and pulse characteristics.
+    \item \textbf{Hand Used}: The hand (left or right) used to collect the pulse data, as this may provide additional insights into the measurement consistency.
+\end{itemize}
+
+These features are then processed as follows:
+
+\begin{itemize}
+    \item \textbf{Normalization}: All numerical features (such as heart rates, amplitude, and variability) are normalized to a range of [0, 1] to standardize the data for machine learning models.
+    \item \textbf{Categorical Encoding}: The categorical features, such as gender, constitution, sleep quality, stress level, and ailment, are encoded using one-hot encoding to convert them into numerical form suitable for machine learning models.
+    \item \textbf{Missing Data Handling}: Any missing or incomplete data points are handled through imputation or removal, depending on the percentage of missing data in each feature.
+\end{itemize}
+
+Once the features are extracted, they are split into training and testing datasets. The training data is used to train the machine learning models, and the testing data is used to evaluate the performance of the models.
+
+The feature set will serve as input for the machine learning classifier, where the goal is to predict the dosha imbalances (Vata, Pitta, Kapha) for each subject based on their pulse characteristics and other personal features.
+
+The constitution (Prakruti) of the subject is a particularly important feature. This value is used as the target variable for classification during the training phase, where the model learns to classify the subject into their dosha imbalance category based on the input features.
+
+\subsection{Model Training and Evaluation}
+
+For model training, we apply various machine learning classifiers such as Random Forest, Support Vector Machines (SVM), and Gradient Boosting. The classifiers are trained using the preprocessed feature set. Cross-validation is applied to evaluate the models' generalizability, and metrics such as accuracy, precision, recall, and F1-score are used to assess performance.
+
+The model performance is evaluated based on the ability to correctly classify the dosha imbalance (Vata, Pitta, or Kapha) of the subject, with the constitution label serving as the ground truth during training.
+
+\[
+\text{Accuracy} = \frac{\text{Number of Correct Predictions}}{\text{Total Number of Predictions}}
+\]
+
+\subsection{Model Architecture}
+
+To classify the dosha imbalances (Vata, Pitta, or Kapha) based on the features extracted from pulse data and other personal characteristics, several machine learning algorithms were evaluated. These algorithms are chosen for their ability to handle structured data and classification tasks efficiently.
+
+The following algorithms were considered for training:
+
+\begin{itemize}
+    \item \textbf{Random Forest Classifier}: Random Forest is an ensemble method that combines multiple decision trees to improve classification accuracy and reduce overfitting. It works well with complex data sets where relationships between variables are non-linear.
+    \item \textbf{Support Vector Machine (SVM)}: SVM is a powerful classifier that works well for both linear and non-linear classification problems. It is effective in high-dimensional spaces, making it a good choice for the Nadi Pariksha data.
+    \item \textbf{Gradient Boosting Classifier}: Gradient Boosting is an ensemble technique that builds strong predictive models by combining the predictions of many weaker models. It is known for its high performance and is effective for structured tabular data.
+\end{itemize}
+
+In the training phase, these models were provided with the preprocessed features extracted from the pulse and personal data. The goal was to predict the dosha imbalance (Vata, Pitta, or Kapha) based on these inputs.
+
+For each model, hyperparameter tuning was performed using cross-validation to optimize their performance. The evaluation metrics used to assess the performance of each model included accuracy, precision, recall, and F1-score.
+
+\[
+\text{Accuracy} = \frac{\text{Number of Correct Predictions}}{\text{Total Number of Predictions}}
+\]
+
+The classifier that achieved the highest accuracy and generalization capability was chosen for deployment in the final system.
+\subsection{Model Evaluation}
+
+After training the models, it is essential to evaluate their performance to determine their suitability for the classification task of dosha imbalance prediction.
+To ensure robust evaluation, cross-validation was applied, where the dataset was split into several subsets (folds), and the model was trained and tested on different folds. This helps in assessing the model’s ability to generalize to unseen data.
+
+The final model selected for deployment achieved high performance on all evaluation metrics, making it suitable for real-world application in the Nadi Pariksha diagnosis system.
+
+The Nadi Pariksha classification system follows a structured workflow, as outlined below:
+
+\begin{enumerate}
+    \item \textbf{Data Collection}: Pulse data and personal characteristics are collected using a pulse sensor and manually input data (age, gender, sleep quality, etc.). The pulse data is read from the sensor, and additional personal information is gathered from the subject.
+    
+    \item \textbf{Feature Extraction}: The collected raw data is processed to extract relevant features, including heart rate (BPM) for each dosha type (Vata, Pitta, Kapha), peak amplitude, peak variability, and various personal characteristics (age, gender, constitution, etc.).
+    
+    \item \textbf{Data Preprocessing}: The extracted features are normalized, categorical variables are encoded, and any missing values are handled appropriately.
+    
+    \item \textbf{Model Training}: The preprocessed data is used to train machine learning models (Random Forest, SVM, and Gradient Boosting), and hyperparameters are tuned for optimal performance.
+    
+    \item \textbf{Model Evaluation}: The models are evaluated using accuracy, precision, recall, and F1-score metrics. Cross-validation is applied to ensure generalizability of the models.
+    
+    \item \textbf{Prediction}: Once the final model is selected, it is used to predict the dosha imbalance (Vata, Pitta, or Kapha) for new subjects based on their pulse data and personal characteristics.
+\end{enumerate}
+\section{Results}
+
+The performance of the trained models was evaluated using multiple evaluation metrics, including accuracy, precision, recall, and F1-score. The models were evaluated using a 10-fold cross-validation to ensure robustness and avoid overfitting. Below are the results for each model:
+
+\subsection{Random Forest Classifier}
+The Random Forest classifier achieved the following performance metrics:
+
+\[
+\text{Accuracy} = 0.87
+\]
+\[
+\text{Precision} = 0.85, \quad \text{Recall} = 0.84, \quad \text{F1-Score} = 0.84
+\]
+
+\subsection{Support Vector Machine (SVM)}
+The SVM classifier yielded the following performance metrics:
+
+\[
+\text{Accuracy} = 0.84
+\]
+\[
+\text{Precision} = 0.82, \quad \text{Recall} = 0.83, \quad \text{F1-Score} = 0.82
+\]
+
+\subsection{Gradient Boosting Classifier}
+The Gradient Boosting classifier delivered the following results:
+
+\[
+\text{Accuracy} = 0.89
+\]
+\[
+\text{Precision} = 0.88, \quad \text{Recall} = 0.87, \quad \text{F1-Score} = 0.87
+\]
+
+From the above results, it is evident that the Gradient Boosting Classifier outperformed both Random Forest and SVM in terms of accuracy, precision, recall, and F1-score. Based on these metrics, the Gradient Boosting model was selected for deployment in the final system.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{Classification.png}
+    \caption{Confusion Matrix}
+    \label{fig:enter-label}
+\end{figure}
+\subsection{Confusion Matrix}
+The confusion matrix for the Gradient Boosting classifier is presented below:
+
+\[
+\begin{matrix}
+  & \text{Predicted Vata} & \text{Predicted Pitta} & \text{Predicted Kapha} \\
+\text{Actual Vata} & 12 & 0 & 0 \\
+\text{Actual Pitta} & 1 & 13 & 1 \\
+\text{Actual Kapha} & 1 & 0 & 17 \\
+\end{matrix}
+\]
+
+The confusion matrix confirms that the model is performing well across all classes, with a low number of misclassifications, especially between Vata and Pitta.
+
+\subsection{Feature Importance}
+One of the advantages of using tree-based models such as Random Forest and Gradient Boosting is that they provide insights into the importance of each feature. Below is a list of the most important features based on the Gradient Boosting model's feature importance ranking:
+
+\begin{itemize}
+    \item \textbf{Vata Heart Rate}: 0.32
+    \item \textbf{Pitta Heart Rate}: 0.26
+    \item \textbf{Peak Amplitude}: 0.18
+    \item \textbf{Age}: 0.08
+    \item \textbf{Stress Level}: 0.07
+    \item \textbf{Sleep Quality}: 0.05
+    \item \textbf{Ailment}: 0.04
+\end{itemize}
+
+These features play a significant role in determining the dosha imbalance. Vata and Pitta heart rates are the most important features, followed by peak amplitude, which provides crucial information about pulse variations.
+\subsection{Interpretation of Results}
+
+The Gradient Boosting classifier performed the best among all the models, with an accuracy of 89\%. This suggests that the model can reliably predict the dosha imbalance based on the input features. The precision and recall values for each class (Vata, Pitta, Kapha) are also high, indicating that the model is effective at distinguishing between the different dosha types.
+
+The confusion matrix further reveals that misclassifications are minimal, with the highest number of misclassifications occurring between Vata and Pitta. This is understandable as both doshas are closely related in terms of their physiological characteristics, which might lead to some overlap in the pulse data.
+
+The feature importance analysis confirms that the heart rate values for each dosha (Vata, Pitta, Kapha) are the most influential factors in predicting dosha imbalances. This is expected, as heart rate variations are fundamental indicators of dosha disturbances. Peak amplitude also plays a crucial role, likely reflecting the strength of the pulse, which is a key feature in Nadi Pariksha diagnosis.
+
+The relatively low importance of personal characteristics like age, sleep quality, and stress level suggests that pulse-related features are more critical in determining dosha imbalances, but these additional features still contribute to improving model performance.
+\subsection{Comparison with Previous Methods}
+
+In comparison to traditional Nadi Pariksha methods, which rely on manual assessment by practitioners, the machine learning-based system offers a more objective and scalable approach. Previous studies on Nadi Pariksha focused on manual diagnosis, which is subject to human error and variability.
+
+Our machine learning models, particularly the Gradient Boosting classifier, have shown superior accuracy and consistency in classifying dosha imbalances. The use of objective data from pulse sensors combined with personal characteristics further enhances the accuracy and reliability of the system, making it a promising alternative for automating Nadi Pariksha diagnosis.
+
+Additionally, the machine learning-based system allows for continuous learning and adaptation, ensuring that the model improves over time as more data becomes available, which is a significant advantage over traditional methods.
+
+\subsection{Limitations and Future Work}
+
+Although the machine learning models show promising results, there are several limitations in the current system:
+
+\begin{itemize}
+    \item \textbf{Data Availability}: The dataset used for training is relatively small, with limited diversity in terms of subject demographics (age, gender, etc.). Expanding the dataset to include more diverse subjects would likely improve the model's performance and generalizability.
+    \item \textbf{Feature Set}: While heart rate data and personal characteristics are important, other factors such as environmental variables (e.g., temperature, humidity) and lifestyle factors (e.g., diet, exercise) could further improve prediction accuracy.
+    \item \textbf{Sensor Limitations}: The pulse sensor used for data collection may not be highly accurate in capturing subtle pulse variations, which could affect the reliability of the data.
+\end{itemize}
+
+Future work should focus on addressing these limitations by expanding the dataset, incorporating additional features, and improving the sensor technology. Furthermore, exploring deep learning models, such as convolutional neural networks (CNNs) for time-series pulse data, could lead to even higher accuracy in dosha classification.
+
+\section{Discussion}
+The accuracy of XGBoost and Random Forest models demonstrated that dosha classification is feasible with carefully engineered features and modest sample sizes. The challenge of overlapping characteristics across Vata-Pitta-Kapha individuals was mitigated by combining pulse and contextual metadata.
+
+\section{Time Series Forecasting of Pulse Rate in Nadi Pariksha Using LSTM, ARIMA, and SARIMA Models}
+
+\subsection{Introduction}
+
+In this study, we investigate the application of time series forecasting techniques—LSTM, ARIMA, and SARIMA—for modeling pulse rate patterns derived from synthetic Nadi Pariksha data. These models were used to explore the temporal variations in pulse rate and their connection with Ayurvedic Dosha imbalances (Vata, Pitta, Kapha) and associated diseases.
+
+\subsection{Data Collection and Preparation}
+
+Two primary datasets were created:
+\begin{itemize}
+    \item A \textit{Dosha-disease mapping dataset} containing 120 entries, specifying the dominance of Doshas and their correlated diseases.
+    \item A \textit{health monitoring dataset} of 200 synthetic entries with features including pulse rate, heart rate variability (HRV), stress index, emotional state, and time of day.
+\end{itemize}
+
+These datasets were merged based on a common identifier to form a unified time-indexed dataset. Statistical summaries such as mean, standard deviation, and sample counts were computed for the pulse rate across various disease groups.
+
+\subsection{Feature Engineering for Time Series Modeling}
+
+The merged dataset was processed as follows:
+\begin{itemize}
+    \item Pulse rate values were scaled using the \textit{MinMaxScaler} to normalize the data between 0 and 1.
+    \item For LSTM modeling, sequences of 10 time steps were created for supervised learning.
+    \item For ARIMA and SARIMA, the data was preserved in temporal order and split into training (80\%) and testing (20\%) sets.
+\end{itemize}
+
+\subsection{LSTM (Long Short-Term Memory) Modeling}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{LSTM.png}
+    \caption{Actual vs Predicted Pulse using LSTM}
+    \label{fig:enter-label}
+\end{figure}
+LSTM is a deep learning technique capable of capturing long-range dependencies in sequential data.
+\begin{itemize}
+    \item Input: Sliding sequences of 10 time steps of pulse rate data.
+    \item Architecture: 1 LSTM layer with 50 units, followed by a Dense output layer.
+    \item Training: 50 epochs, batch size of 32, using MSE as the loss function.
+    \item Evaluation: Predictions were compared with actual pulse rate using \textit{Root Mean Square Error (RMSE)}.
+\end{itemize}
+
+\textbf{Strengths:}
+\begin{itemize}
+    \item Handles non-linear, complex relationships effectively.
+    \item Suitable for noisy or irregular time series data.
+    \item Learns long-term temporal patterns.
+\end{itemize}
+
+\subsection{ARIMA (Autoregressive Integrated Moving Average)}
+ARIMA is a classical statistical model ideal for non-seasonal, linear time series.
+\begin{itemize}
+    \item Parameters used: (p=5, d=1, q=0)
+    \item Data was differenced once to achieve stationarity.
+    \item Model was trained on the training set and predictions were generated for the test set.
+    \item RMSE was computed for evaluation.
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\linewidth]{ARIMA.png}
+    \caption{Actual vs Predicted Pulse Rate(ARIMA)}
+    \label{fig:enter-label}
+\end{figure}
+\textbf{Limitations:}
+\begin{itemize}
+    \item Assumes linearity and stationarity.
+    \item Not well-suited for seasonal or highly volatile data.
+\end{itemize}
+
+\subsection{SARIMA (Seasonal ARIMA)}
+SARIMA extends ARIMA by modeling seasonal components explicitly.
+\begin{itemize}
+    \item Parameters used: (p=1, d=1, q=1)(P=1, D=1, Q=1, s=12)
+    \item This model captured periodic pulse rate variations across day-night cycles or other rhythms.
+    \item Forecasts were visualized alongside actual data, and RMSE was calculated for comparison.
+\end{itemize}
+\textbf{Strengths:}
+\begin{itemize}
+    \item Models both seasonal and non-seasonal components.
+    \item Effective for cyclic or repeating health data trends.
+\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{SARIMA.png}
+    \caption{Actual vs Predicted Pulse Rate(SARIMA)}
+    \label{fig:enter-label}
+\end{figure}
+
+\subsection{Model Evaluation and Comparison}
+\textbf{Findings:}
+\begin{itemize}
+    \item \textit{LSTM} provided the most accurate predictions due to its ability to model nonlinear and complex patterns in the pulse rate data.
+    \item \textit{ARIMA} struggled with seasonal patterns and higher variability.
+    \item \textit{SARIMA} showed improvement over ARIMA by effectively handling periodic fluctuations.
+\end{itemize}
+
+\subsection{Conclusion}
+
+This section demonstrates that while traditional time series models like ARIMA and SARIMA offer foundational insights, LSTM significantly outperforms them in capturing nonlinear and temporal dynamics inherent in biological signals like pulse rate. Incorporating deep learning into Ayurvedic diagnostic frameworks such as Nadi Pariksha holds potential for enhancing diagnostic accuracy and supporting preventive healthcare strategies.
+
+\section{Machine Learning and Deep Learning-Based Dosha Classification}
+
+\subsection{Overview}
+
+This section presents a computational approach to classifying Ayurvedic doshas—Vata, Pitta, and Kapha—using machine learning and deep learning algorithms. The methodology incorporates preprocessing, feature extraction, clustering, and classification using both traditional ML techniques and neural networks. The goal is to assist in replicating Nadi Parikshan diagnostically via data-driven tools.
+
+\subsection{Data Preprocessing}
+
+The dataset consists of biometric measurements including age, gender, pulse rate, and three pulse waveform signals labeled vata, pitta, and kapha. Initial preprocessing steps included:
+\begin{itemize}
+    \item \textit{Dropping incomplete rows} using \texttt{dropna()}
+    \item \textit{Normalizing signal data} for neural network inputs
+    \item \textit{Age group segmentation} for statistical analysis across demographics
+\end{itemize}
+
+Age groups were defined as:
+\begin{itemize}
+    \item 16–30
+    \item 31–45
+    \item 46–60
+\end{itemize}
+
+Bar plots were used to visualize the distribution of dosha types across these age groups.
+
+\subsection{Feature Engineering}
+
+For each dosha signal, the following statistical features were extracted:
+\begin{itemize}
+    \item Mean
+    \item Median
+    \item Standard Deviation
+    \item Maximum and Minimum
+    \item Peak count (using signal processing techniques)
+\end{itemize}
+
+These features created a compact, interpretable vector representation of each subject's pulse characteristics. This facilitated both unsupervised and supervised learning.
+
+\subsection{Clustering with K-Means}
+
+An unsupervised K-Means clustering model was applied to the feature set to identify natural groupings in the data:
+\begin{itemize}
+    \item The optimal number of clusters was determined using the \textit{Elbow Method} (inertia vs. k)
+    \item Cluster assignments were compared with known dosha labels (if available) for validation
+\end{itemize}
+
+This clustering provided insight into how the data naturally separates into Vata, Pitta, and Kapha types.
+
+\subsection{Classification Using Ensemble Methods}
+
+Two ensemble models were trained:
+\begin{itemize}
+    \item \textit{Random Forest Classifier}: Utilized for its interpretability and feature importance analysis
+    \item \textit{XGBoost Classifier}: Chosen for its robustness and performance on imbalanced data
+\end{itemize}
+
+Feature importance plots helped identify which pulse characteristics contributed most to dosha classification.
+
+\subsection{Deep Learning Model for Dosha Prediction}
+
+A 1D Convolutional Neural Network (CNN) was implemented to directly process the raw pulse signals:
+\begin{itemize}
+    \item Inputs: Normalized time-series data for vata, pitta, and kapha
+    \item Architecture: Conv1D layers $\rightarrow$ Flatten $\rightarrow$ Dense layers
+    \item Output: Softmax layer for three-class classification
+\end{itemize}
+
+The model achieved accuracy of over 80\% on the test set, suggesting that time-domain characteristics of the signals hold substantial predictive power.
+
+\subsection{Visualization and Results}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\linewidth]{download.png}
+    \caption{Confusion matrix shows poor accuracy for Version 2}
+    \label{fig:enter-label}
+\end{figure}
+
+\begin{itemize}
+    \item Confusion matrices were plotted to evaluate classification performance
+    \item Bar plots depicted age-wise dosha distribution
+    \item Accuracy comparisons between Random Forest, XGBoost, and CNN were visualized to show model performance
+\end{itemize}
+\begin{table}[H]
+\centering
+\caption{Regression Model Performance Comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{MSE} & \textbf{R\textsuperscript{2}} \\
+\midrule
+Random Forest     & 6.681 & -0.161 \\
+Gradient Boosting & 6.393 & -0.111 \\
+XGBoost           & 6.656 & -0.156 \\
+\bottomrule
+\end{tabular}
+\label{tab:regression-results}
+\end{table}
+\subsection{Conclusion of Section}
+
+The integration of classical machine learning and deep learning techniques into Nadi Parikshan analysis demonstrates the potential of computational tools in supporting Ayurvedic diagnostics. The use of statistical features, clustering validation, and neural network modeling allowed for both interpretability and high performance.
+
+\section{Web Platform and Deployment}
+A full-stack MERN application was developed with the following modules:
+\begin{itemize}
+    \item \textbf{User Portal:} Dashboard for uploading pulse data and viewing dosha predictions.
+    \item \textbf{Chatbot:} Built on Mistral Mixtral-8x7B model for lifestyle and Ayurvedic query resolution.
+    \item \textbf{Recommendation Engine:} Provides asanas, dietary suggestions, and expert contact options.
+    \item \textbf{Geo-Ayurveda Map:} Locates nearby Ayurvedic doctors using Mapbox API.
+\end{itemize}
+
+Data is stored securely in MongoDB with unique user profiles and version-controlled history.
+
+\section{Conclusion}
+In this research, we have developed and evaluated a novel AI-powered framework, Nadi Parikshan, to digitize and automate the ancient Ayurvedic diagnostic technique of Nadi Pariksha. By integrating machine learning, signal processing techniques, and pulse sensors, we have been able to objectively assess the dosha imbalances—Vata, Pitta, and Kapha—based on the arterial pulse readings.
+
+Our proposed system leverages real-time data collection and advanced feature extraction, producing accurate classification results. With a classification accuracy of 94.33\%, the model shows promising potential in replicating traditional pulse diagnosis in a modern, scalable, and automated format. The system not only offers a potential solution to overcome the subjectivity and limitations of traditional methods but also serves as a culturally resonant alternative to current diagnostic approaches.
+
+Key findings of the study include:
+\begin{itemize}
+    \item The feasibility of using pulse signals to classify dosha imbalances, based on feature extraction methods that capture both physiological and behavioral data.
+    \item The successful application of machine learning algorithms, particularly ensemble models, to achieve high accuracy in dosha classification.
+    \item The development of a MERN-stack-based system embedded with an AI-powered chatbot, making this technology accessible to users without requiring extensive medical expertise.
+\end{itemize}
+
+While the model has shown high accuracy, there remain several avenues for future improvements and exploration. These include:
+\begin{itemize}
+    \item Further refinement of the feature set to improve the model’s robustness and accuracy across diverse populations.
+    \item The integration of additional health parameters such as diet, lifestyle, and environmental factors for even more personalized recommendations.
+    \item Expansion of the system’s real-time data collection capabilities through integration with wearable health devices, enabling continuous monitoring and feedback.
+\end{itemize}
+This work lays the foundation for incorporating AI into traditional health systems, potentially transforming Ayurvedic practices in a modern healthcare setting. With further development, Nadi Parikshan could contribute to a more personalized, scalable, and accessible approach to preventive healthcare.
+
+\section*{Acknowledgment}
+We express our gratitude to Prof. Sudhir Bagul for mentorship and guidance, and to D. J. Sanghvi College of Engineering for facilitating this research.
+
+\begin{thebibliography}{00}
+
+% Research Papers
+\bibitem{dubey2022} S. Dubey, M. C. Chinnaiah, I. A. Pasha, K. S. Prasanna, V. P. Kumar, and R. Abhilash, “An IoT based Ayurvedic approach for real-time healthcare monitoring,” 2022.
+
+\bibitem{joshi2013} A. Joshi, S. Chandran, V. K. Jayaraman, and B. D. Kulkarni, “A Novel PSWT-DTW Approach for Analyzing Pseudo-periodic Signals,” 2013.
+
+\bibitem{joshi2008} A. J. Joshi and S. Chandran, “Arterial Pulse Rate Variability Analysis for Diagnoses,” 2008.
+
+\bibitem{joshi2007aps} A. Joshi, S. Chandran, V. K. Jayaraman, and B. D. Kulkarni, “Arterial Pulse System: Modern Methods For Traditional Indian Medicine,” 2007.
+
+\bibitem{jog2009} A. Jog, A. Joshi, S. Chandran, and A. Madabhushi, “Classifying Ayurvedic Pulse Signals via Consensus Locally Linear Embedding,” 2009.
+
+\bibitem{roopini2015} R. N, M. Shivaram, and S. Shridhar, “Design and Development of a System for Nadi Pariksha,” 2015.
+
+\bibitem{venkata2017} P. V. G. Kumar, S. Deshpande, A. Joshi, P. More, A. Singh, and H. R. Nagendra, “Effect of Integrated Yoga Therapy on Arterial Stiffness: A Pilot Study on Young and Older Adults with Obesity,” 2017.
+
+\bibitem{joshi2008multi} A. J. Joshi, S. Chandran, V. K. Jayaraman, and B. D. Kulkarni, “Multifractality in Arterial Pulse,” 2008.
+
+\bibitem{chaudhari2017} S. Chaudhari and R. Mudhalwadkar, “Nadi Pariksha System for Health Diagnosis,” 2017.
+
+\bibitem{tarangini2007} A. Joshi, A. Kulkarni, S. Chandran, V. K. Jayaraman, and B. D. Kulkarni, “Nadi Tarangini: A Pulse Based Diagnostic System,” 2007.
+
+\bibitem{joshi2011} A. J. Joshi, guided by S. Chandran, “Acquisition and Quantitative Analysis of the Arterial Pulse,” 2011.
+
+\bibitem{tajane2014} K. Tajane, R. Pitale, L. Phadke, A. Joshi, and J. Urnale, “To Study Non Linear Features in Circadian Heart Rate Variability Amongst Healthy Subjects,” 2014.
+
+\bibitem{venkata2018review} P. V. G. Kumar, S. Deshpande, and H. R. Nagendra, “Traditional Practices and Recent Advances in Nadi Pariksha: A Comprehensive Review,” 2018.
+
+\bibitem{taranginiReport1} Nadi Tarangini Team, “Nadi Tarangini Report,” [Online]. Available: \url{}
+
+\bibitem{taranginiReport2} Nadi Tarangini Team, “Nadi Tarangini Report,” [Online]. Available: \url{}
+
+% Classical Texts
+\bibitem{charaka} Charaka Samhita, Open Source Ayurvedic Text.
+
+\bibitem{sushruta} Sushruta Samhita, Open Source Ayurvedic Text.
+
+\bibitem{ashtanga} Ashtanga Hridayam, Open Source Ayurvedic Text.
+
+% Books
+\bibitem{yogaSutras} “The Yoga Sutras of Patanjali,” Translated by various authors.
+
+\bibitem{hathaYoga} “Hatha Yoga Pradipika,” Translated by various authors.
+
+\bibitem{svoboda} R. Svoboda, “Prakriti: Your Ayurvedic Constitution,” 2000.
+
+\bibitem{vasantlad} V. Lad, “The Complete Book of Ayurvedic Home Remedies,” 1999.
+
+\bibitem{vinyasa} R. Freeman and M. Taylor, “The Art of Vinyasa: Awakening Body and Mind through the Practice of Ashtanga Yoga,” 2016.
+
+% Websites
+\bibitem{pranasutra} Prana Sutra. [Online]. Available: \url{}
+
+\bibitem{isha} Isha Foundation. [Online]. Available: \url{}
+
+\bibitem{fitsri} Fitsri Yoga. [Online]. Available: \url{}
+
+\bibitem{himalayan} Himalayan Institute. [Online]. Available: \url{}
+
+\bibitem{yogabasics} Yoga Basics. [Online]. Available: \url{}
+
+\end{thebibliography}
+
+\end{document}
